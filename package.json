@@ -1,5 +1,5 @@
 {
-  "name": "ponder-demo",
+  "name": "market-indexer",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,9 +12,11 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "ponder": "^0.16.6",
+    "@hono/zod-validator": "^0.8.0",
     "hono": "^4.5.0",
-    "viem": "^2.21.3"
+    "ponder": "^0.16.6",
+    "viem": "^2.21.3",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

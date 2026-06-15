@@ -1,23 +1,27 @@
 import { createConfig } from "ponder";
-
-import { PrimitiveManagerAbi } from "./abis/PrimitiveManagerAbi";
+import { TokenExchangeAbi } from "./abis/TokenExchangeAbi";
 
 export default createConfig({
+  database: {
+    kind: "postgres",
+    connectionString: process.env.DATABASE_URL!,
+    poolConfig: {
+      max: 30,
+    },
+  },
   chains: {
-    mainnet: {
-      id: 1,
-      rpc: process.env.PONDER_RPC_URL_1,
+    bsc: {
+      id: Number(process.env.PONDER_CHAIN_ID),
+      rpc: process.env.PONDER_RPC_URL,
+      ws: process.env.PONDER_WS_URL,
     },
   },
   contracts: {
-    PrimitiveManager: {
-      chain: "mainnet",
-      abi: PrimitiveManagerAbi,
-      address: "0x54522dA62a15225C95b01bD61fF58b866C50471f",
-      startBlock: 14438081,
-      filter: {
-        event: "Swap",
-      },
+    TokenExchange: {
+      chain: "bsc",
+      abi: TokenExchangeAbi,
+      address: process.env.TOKEN_EXCHANGE_ADDRESS as `0x${string}`,
+      startBlock: Number(process.env.START_BLOCK),
     },
   },
 });
