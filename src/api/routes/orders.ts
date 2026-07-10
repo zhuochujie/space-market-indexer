@@ -66,7 +66,7 @@ orderRoutes.get(
       .select()
       .from(schema.order)
       .where(where)
-      .orderBy(desc(schema.order.price))
+      .orderBy(desc(schema.order.price), asc(schema.order.createdAt))
       .limit(pageSize)
       .offset(getPaginationOffset({ page, pageSize }));
 
