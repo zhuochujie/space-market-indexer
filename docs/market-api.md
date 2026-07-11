@@ -199,8 +199,9 @@ side      可选，buy | sell
 排序：
 
 ```text
-price DESC
-createdAt ASC
+side=buy: price DESC, createdAt ASC
+side=sell: price ASC, createdAt ASC
+未传 side: createdAt DESC
 ```
 
 请求示例：

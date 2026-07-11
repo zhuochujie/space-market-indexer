@@ -60,13 +60,20 @@ orderRoutes.get(
       conditions.push(eq(schema.order.side, side));
     }
 
+    const orderBy =
+      side === "sell"
+        ? [asc(schema.order.price), asc(schema.order.createdAt)]
+        : side === "buy"
+          ? [desc(schema.order.price), asc(schema.order.createdAt)]
+          : [desc(schema.order.createdAt)];
+
     const where = and(...conditions);
     const total = await countOrders(where);
     const rows = await db
       .select()
       .from(schema.order)
       .where(where)
-      .orderBy(desc(schema.order.price), asc(schema.order.createdAt))
+      .orderBy(...orderBy)
       .limit(pageSize)
       .offset(getPaginationOffset({ page, pageSize }));
 
