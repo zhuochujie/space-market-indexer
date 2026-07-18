@@ -44,6 +44,32 @@ tradeRoutes.get(
 );
 
 tradeRoutes.get(
+  "/trades/recent",
+  validateQuery(paginationQuerySchema),
+  async (c) => {
+    const { page, pageSize } = c.req.valid("query");
+
+    const [totalRow] = await db
+      .select({ total: sql<string>`count(*)` })
+      .from(schema.marketTrade);
+
+    const rows = await db
+      .select()
+      .from(schema.marketTrade)
+      .orderBy(desc(schema.marketTrade.filledAt), desc(schema.marketTrade.id))
+      .limit(pageSize)
+      .offset(getPaginationOffset({ page, pageSize }));
+
+    return ok(c, {
+      items: rows.map(serializeTrade),
+      total: toCount(totalRow?.total),
+      page,
+      pageSize,
+    });
+  },
+);
+
+tradeRoutes.get(
   "/trades/account",
   validateQuery(accountTradesQuerySchema),
   async (c) => {
