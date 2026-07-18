@@ -42,15 +42,19 @@ export const getAccountTradeAction = (
   trade: typeof schema.marketTrade.$inferSelect,
   account: `0x${string}`,
 ): MarketTradeAction => {
-  if (trade.taker === account && trade.side === "sell") {
+  const maker = trade.maker.toLowerCase();
+  const taker = trade.taker.toLowerCase();
+  const currentAccount = account.toLowerCase();
+
+  if (taker === currentAccount && trade.side === "sell") {
     return "active_buy";
   }
 
-  if (trade.maker === account && trade.side === "buy") {
+  if (maker === currentAccount && trade.side === "buy") {
     return "passive_buy";
   }
 
-  if (trade.taker === account && trade.side === "buy") {
+  if (taker === currentAccount && trade.side === "buy") {
     return "active_sell";
   }
 
@@ -60,8 +64,13 @@ export const getAccountTradeAction = (
 export const serializeAccountTrade = (
   trade: typeof schema.marketTrade.$inferSelect,
   account: `0x${string}`,
-) => ({
-  ...serializeTrade(trade),
-  action: getAccountTradeAction(trade, account),
-  counterparty: trade.maker === account ? trade.taker : trade.maker,
-});
+) => {
+  const maker = trade.maker.toLowerCase();
+  const currentAccount = account.toLowerCase();
+
+  return {
+    ...serializeTrade(trade),
+    action: getAccountTradeAction(trade, account),
+    counterparty: maker === currentAccount ? trade.taker : trade.maker,
+  };
+};
