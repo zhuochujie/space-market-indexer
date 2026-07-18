@@ -1,12 +1,13 @@
 import { db } from "ponder:api";
 import schema from "ponder:schema";
 import { Hono } from "hono";
-import { and, desc, eq, sql } from "ponder";
+import { and, desc, eq, or, sql } from "ponder";
 import type { SQL } from "drizzle-orm";
-import { serializeTrade } from "../serializers";
+import { serializeAccountTrade, serializeTrade } from "../serializers";
 import {
   getPaginationOffset,
   hexSchema,
+  marketTradeActionSchema,
   ok,
   orderSideSchema,
   paginationQuerySchema,
@@ -16,8 +17,9 @@ import {
   validateQuery,
 } from "../utils";
 
-const myTradesQuerySchema = paginationQuerySchema.extend({
-  taker: hexSchema,
+const accountTradesQuerySchema = paginationQuerySchema.extend({
+  account: hexSchema,
+  action: marketTradeActionSchema.optional(),
   side: orderSideSchema.optional(),
 });
 
@@ -42,12 +44,39 @@ tradeRoutes.get(
 );
 
 tradeRoutes.get(
-  "/trades/mine",
-  validateQuery(myTradesQuerySchema),
+  "/trades/account",
+  validateQuery(accountTradesQuerySchema),
   async (c) => {
-    const { page, pageSize, side, taker } = c.req.valid("query");
+    const { account, action, page, pageSize, side } = c.req.valid("query");
 
-    const conditions: SQL[] = [eq(schema.marketTrade.taker, taker)];
+    const actionConditions: Record<NonNullable<typeof action>, SQL[]> = {
+      active_buy: [
+        eq(schema.marketTrade.taker, account),
+        eq(schema.marketTrade.side, "sell"),
+      ],
+      passive_buy: [
+        eq(schema.marketTrade.maker, account),
+        eq(schema.marketTrade.side, "buy"),
+      ],
+      active_sell: [
+        eq(schema.marketTrade.taker, account),
+        eq(schema.marketTrade.side, "buy"),
+      ],
+      passive_sell: [
+        eq(schema.marketTrade.maker, account),
+        eq(schema.marketTrade.side, "sell"),
+      ],
+    };
+
+    const conditions: SQL[] =
+      action === undefined
+        ? [
+            or(
+              eq(schema.marketTrade.maker, account),
+              eq(schema.marketTrade.taker, account),
+            )!,
+          ]
+        : actionConditions[action];
 
     if (side !== undefined) {
       conditions.push(eq(schema.marketTrade.side, side));
@@ -68,7 +97,7 @@ tradeRoutes.get(
       .offset(getPaginationOffset({ page, pageSize }));
 
     return ok(c, {
-      list: rows.map(serializeTrade),
+      items: rows.map((trade) => serializeAccountTrade(trade, account)),
       total: toCount(totalRow?.total),
       page,
       pageSize,

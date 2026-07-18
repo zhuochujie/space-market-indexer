@@ -24,9 +24,6 @@ const minRemainingSpaceAmount = 1_000_000_000_000_000_000n;
 const openOrdersQuerySchema = paginationQuerySchema.extend({
   side: orderSideSchema.optional(),
 });
-const myOpenOrdersQuerySchema = openOrdersQuerySchema.extend({
-  maker: hexSchema,
-});
 const myOrdersQuerySchema = paginationQuerySchema.extend({
   maker: hexSchema,
   side: orderSideSchema.optional(),
@@ -100,40 +97,6 @@ orderRoutes.get(
 
     return ok(c, {
       items: rows.map(serializeOrder),
-    });
-  },
-);
-
-orderRoutes.get(
-  "/orders/mine/open",
-  validateQuery(myOpenOrdersQuerySchema),
-  async (c) => {
-    const { maker, page, pageSize, side } = c.req.valid("query");
-
-    const conditions: SQL[] = [
-      eq(schema.order.maker, maker),
-      eq(schema.order.status, "open"),
-    ];
-
-    if (side !== undefined) {
-      conditions.push(eq(schema.order.side, side));
-    }
-
-    const where = and(...conditions);
-    const total = await countOrders(where);
-    const rows = await db
-      .select()
-      .from(schema.order)
-      .where(where)
-      .orderBy(desc(schema.order.createdAt))
-      .limit(pageSize)
-      .offset(getPaginationOffset({ page, pageSize }));
-
-    return ok(c, {
-      items: rows.map(serializeOrder),
-      total,
-      page,
-      pageSize,
     });
   },
 );

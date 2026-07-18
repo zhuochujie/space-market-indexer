@@ -31,3 +31,37 @@ export const serializeTrade = (
   logIndex: trade.logIndex,
   filledAt: trade.filledAt,
 });
+
+export type MarketTradeAction =
+  | "active_buy"
+  | "passive_buy"
+  | "active_sell"
+  | "passive_sell";
+
+export const getAccountTradeAction = (
+  trade: typeof schema.marketTrade.$inferSelect,
+  account: `0x${string}`,
+): MarketTradeAction => {
+  if (trade.taker === account && trade.side === "sell") {
+    return "active_buy";
+  }
+
+  if (trade.maker === account && trade.side === "buy") {
+    return "passive_buy";
+  }
+
+  if (trade.taker === account && trade.side === "buy") {
+    return "active_sell";
+  }
+
+  return "passive_sell";
+};
+
+export const serializeAccountTrade = (
+  trade: typeof schema.marketTrade.$inferSelect,
+  account: `0x${string}`,
+) => ({
+  ...serializeTrade(trade),
+  action: getAccountTradeAction(trade, account),
+  counterparty: trade.maker === account ? trade.taker : trade.maker,
+});

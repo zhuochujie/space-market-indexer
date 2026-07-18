@@ -55,6 +55,14 @@ export const marketTrade = onchainTable(
   }),
   (table) => ({
     filledAtIdx: index("market_trade_filled_at_idx").on(table.filledAt),
+    makerFilledAtIdx: index("market_trade_maker_filled_at_idx").on(
+      table.maker,
+      table.filledAt,
+    ),
+    takerFilledAtIdx: index("market_trade_taker_filled_at_idx").on(
+      table.taker,
+      table.filledAt,
+    ),
     orderIdFilledAtIdx: index("market_trade_order_id_filled_at_idx").on(
       table.orderId,
       table.filledAt,

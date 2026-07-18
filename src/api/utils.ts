@@ -29,6 +29,12 @@ export const hexSchema = z
 
 export const orderSideSchema = z.enum(["buy", "sell"]);
 export const orderStatusSchema = z.enum(["open", "filled", "cancelled"]);
+export const marketTradeActionSchema = z.enum([
+  "active_buy",
+  "passive_buy",
+  "active_sell",
+  "passive_sell",
+]);
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
