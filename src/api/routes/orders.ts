@@ -3,7 +3,7 @@ import schema from "ponder:schema";
 import { Hono } from "hono";
 import { and, asc, desc, eq, gte, sql } from "ponder";
 import type { SQL } from "drizzle-orm";
-import { serializeOrder } from "../serializers";
+import { serializeOrder, serializeTrade } from "../serializers";
 import {
   getPaginationOffset,
   hexSchema,
@@ -102,6 +102,29 @@ orderRoutes.get(
 );
 
 orderRoutes.get(
+  "/orders/recent",
+  validateQuery(paginationQuerySchema),
+  async (c) => {
+    const { page, pageSize } = c.req.valid("query");
+
+    const total = await countOrders(undefined);
+    const rows = await db
+      .select()
+      .from(schema.order)
+      .orderBy(desc(schema.order.createdAt), desc(schema.order.id))
+      .limit(pageSize)
+      .offset(getPaginationOffset({ page, pageSize }));
+
+    return ok(c, {
+      items: rows.map(serializeOrder),
+      total,
+      page,
+      pageSize,
+    });
+  },
+);
+
+orderRoutes.get(
   "/orders/mine",
   validateQuery(myOrdersQuerySchema),
   async (c) => {
@@ -134,6 +157,31 @@ orderRoutes.get(
     });
   },
 );
+
+orderRoutes.get("/orders/:id/detail", validateParam(idParamSchema), async (c) => {
+  const { id } = c.req.valid("param");
+
+  const [order] = await db
+    .select()
+    .from(schema.order)
+    .where(eq(schema.order.id, id))
+    .limit(1);
+
+  if (order === undefined) {
+    return fail(c, 404, "ORDER_NOT_FOUND");
+  }
+
+  const trades = await db
+    .select()
+    .from(schema.marketTrade)
+    .where(eq(schema.marketTrade.orderId, id))
+    .orderBy(desc(schema.marketTrade.filledAt), desc(schema.marketTrade.id));
+
+  return ok(c, {
+    order: serializeOrder(order),
+    trades: trades.map(serializeTrade),
+  });
+});
 
 orderRoutes.get("/orders/:id", validateParam(idParamSchema), async (c) => {
   const { id } = c.req.valid("param");
