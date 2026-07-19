@@ -70,6 +70,32 @@ tradeRoutes.get(
 );
 
 tradeRoutes.get(
+  "/trades/account/stats",
+  validateQuery(accountTradesQuerySchema.pick({ account: true })),
+  async (c) => {
+    const { account } = c.req.valid("query");
+
+    const [row] = await db
+      .select({
+        buySpaceAmount: sql<string>`coalesce(sum(case when ((${schema.marketTrade.taker} = ${account} and ${schema.marketTrade.side} = 'sell') or (${schema.marketTrade.maker} = ${account} and ${schema.marketTrade.side} = 'buy')) then ${schema.marketTrade.spaceAmount} else 0 end), 0)`,
+        sellSpaceAmount: sql<string>`coalesce(sum(case when ((${schema.marketTrade.taker} = ${account} and ${schema.marketTrade.side} = 'buy') or (${schema.marketTrade.maker} = ${account} and ${schema.marketTrade.side} = 'sell')) then ${schema.marketTrade.spaceAmount} else 0 end), 0)`,
+      })
+      .from(schema.marketTrade)
+      .where(
+        or(
+          eq(schema.marketTrade.maker, account),
+          eq(schema.marketTrade.taker, account),
+        ),
+      );
+
+    return ok(c, {
+      buySpaceAmount: row?.buySpaceAmount ?? "0",
+      sellSpaceAmount: row?.sellSpaceAmount ?? "0",
+    });
+  },
+);
+
+tradeRoutes.get(
   "/trades/account",
   validateQuery(accountTradesQuerySchema),
   async (c) => {
