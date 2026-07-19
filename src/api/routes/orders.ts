@@ -19,7 +19,7 @@ import {
   validateQuery,
 } from "../utils";
 
-const minRemainingSpaceAmount = 1_000_000_000_000_000_000n;
+const minRemainingSpaceAmount = 10_000_000_000_000_000n;
 
 const openOrdersQuerySchema = paginationQuerySchema.extend({
   side: orderSideSchema.optional(),
