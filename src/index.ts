@@ -79,7 +79,6 @@ ponder.on("TokenExchange:OrderCancelled", async ({ event, context }) => {
   if (order === null) return;
 
   await context.db.update(schema.order, { id: orderId }).set({
-    remainingSpaceAmount: 0n,
     status: "cancelled",
   });
 });
