@@ -1,7 +1,7 @@
 import { db } from "ponder:api";
 import schema from "ponder:schema";
 import { Hono } from "hono";
-import { and, asc, desc, eq, gte, sql } from "ponder";
+import { and, asc, desc, eq, sql } from "ponder";
 import type { SQL } from "drizzle-orm";
 import { serializeOrder, serializeTrade } from "../serializers";
 import {
@@ -18,8 +18,6 @@ import {
   validateParam,
   validateQuery,
 } from "../utils";
-
-const minRemainingSpaceAmount = 1n;
 
 const openOrdersQuerySchema = paginationQuerySchema.extend({
   side: orderSideSchema.optional(),
@@ -50,7 +48,6 @@ orderRoutes.get(
     const conditions: SQL[] = [
       eq(schema.order.status, "open"),
       eq(schema.order.visible, true),
-      gte(schema.order.remainingSpaceAmount, minRemainingSpaceAmount),
     ];
 
     if (side !== undefined) {

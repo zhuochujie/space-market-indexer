@@ -1,7 +1,7 @@
 import { db } from "ponder:api";
 import schema from "ponder:schema";
 import { Hono } from "hono";
-import { and, desc, eq, gte, sql } from "ponder";
+import { desc, eq, gte, sql } from "ponder";
 import { ok, SECONDS_PER_DAY, toBigInt } from "../utils";
 
 export const statsRoutes = new Hono();
@@ -68,7 +68,7 @@ statsRoutes.get("/stats/market-open-space", async (c) => {
       sellSpaceAmount: sql<string>`coalesce(sum(case when ${schema.order.side} = 'sell' then ${schema.order.remainingSpaceAmount} else 0 end), 0)`,
     })
     .from(schema.order)
-    .where(and(eq(schema.order.status, "open"), eq(schema.order.visible, true)));
+    .where(eq(schema.order.status, "open"));
 
   return ok(c, {
     buySpaceAmount: toBigInt(row?.buySpaceAmount).toString(),
