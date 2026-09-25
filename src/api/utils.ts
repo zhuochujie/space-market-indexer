@@ -83,3 +83,10 @@ export const validateParam = <T extends z.ZodTypeAny>(schema: T) =>
       return fail(c, 400, "VALIDATION_ERROR");
     }
   });
+
+export const validateJson = <T extends z.ZodTypeAny>(schema: T) =>
+  zValidator("json", schema, (result, c) => {
+    if (result.success === false) {
+      return fail(c, 400, "VALIDATION_ERROR");
+    }
+  });

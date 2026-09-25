@@ -1,8 +1,9 @@
 import { db } from "ponder:api";
 import schema from "ponder:schema";
 import { Hono } from "hono";
-import { and, desc, eq, or, sql } from "ponder";
+import { and, desc, eq, gte, inArray, lt, or, sql } from "ponder";
 import type { SQL } from "drizzle-orm";
+import { z } from "zod";
 import { serializeAccountTrade, serializeTrade } from "../serializers";
 import {
   getPaginationOffset,
@@ -14,6 +15,7 @@ import {
   toCount,
   transactionHashParamSchema,
   validateParam,
+  validateJson,
   validateQuery,
 } from "../utils";
 
@@ -22,6 +24,17 @@ const accountTradesQuerySchema = paginationQuerySchema.extend({
   action: marketTradeActionSchema.optional(),
   side: orderSideSchema.optional(),
 });
+
+const accountsTradeStatsBodySchema = z
+  .object({
+    accounts: z.array(hexSchema).min(1).max(5000),
+    from: z.coerce.number().int().min(0),
+    to: z.coerce.number().int().min(0),
+  })
+  .refine((value) => value.to > value.from, {
+    message: "INVALID_TIME_RANGE",
+    path: ["to"],
+  });
 
 export const tradeRoutes = new Hono();
 
@@ -91,6 +104,58 @@ tradeRoutes.get(
     return ok(c, {
       buySpaceAmount: row?.buySpaceAmount ?? "0",
       sellSpaceAmount: row?.sellSpaceAmount ?? "0",
+    });
+  },
+);
+
+tradeRoutes.post(
+  "/trades/accounts/stats",
+  validateJson(accountsTradeStatsBodySchema),
+  async (c) => {
+    const { accounts, from, to } = c.req.valid("json");
+    const normalizedAccounts = Array.from(
+      new Set(accounts.map((account) => account.toLowerCase() as `0x${string}`)),
+    );
+    const makerInAccounts = inArray(schema.marketTrade.maker, normalizedAccounts);
+    const takerInAccounts = inArray(schema.marketTrade.taker, normalizedAccounts);
+
+    const [row] = await db
+      .select({
+        activeBuySpaceAmount: sql<string>`coalesce(sum(case when (${takerInAccounts} and ${schema.marketTrade.side} = 'sell') then ${schema.marketTrade.spaceAmount} else 0 end), 0)`,
+        passiveBuySpaceAmount: sql<string>`coalesce(sum(case when (${makerInAccounts} and ${schema.marketTrade.side} = 'buy') then ${schema.marketTrade.spaceAmount} else 0 end), 0)`,
+        activeSellSpaceAmount: sql<string>`coalesce(sum(case when (${takerInAccounts} and ${schema.marketTrade.side} = 'buy') then ${schema.marketTrade.spaceAmount} else 0 end), 0)`,
+        passiveSellSpaceAmount: sql<string>`coalesce(sum(case when (${makerInAccounts} and ${schema.marketTrade.side} = 'sell') then ${schema.marketTrade.spaceAmount} else 0 end), 0)`,
+        tradeCount: sql<string>`count(*)`,
+      })
+      .from(schema.marketTrade)
+      .where(
+        and(
+          or(
+            makerInAccounts,
+            takerInAccounts,
+          ),
+          gte(schema.marketTrade.filledAt, from),
+          lt(schema.marketTrade.filledAt, to),
+        ),
+      );
+
+    return ok(c, {
+      totalBuySpaceAmount: (
+        BigInt(row?.activeBuySpaceAmount ?? "0") +
+        BigInt(row?.passiveBuySpaceAmount ?? "0")
+      ).toString(),
+      activeBuySpaceAmount: row?.activeBuySpaceAmount ?? "0",
+      passiveBuySpaceAmount: row?.passiveBuySpaceAmount ?? "0",
+      totalSellSpaceAmount: (
+        BigInt(row?.activeSellSpaceAmount ?? "0") +
+        BigInt(row?.passiveSellSpaceAmount ?? "0")
+      ).toString(),
+      activeSellSpaceAmount: row?.activeSellSpaceAmount ?? "0",
+      passiveSellSpaceAmount: row?.passiveSellSpaceAmount ?? "0",
+      tradeCount: toCount(row?.tradeCount),
+      accountCount: normalizedAccounts.length,
+      from,
+      to,
     });
   },
 );
